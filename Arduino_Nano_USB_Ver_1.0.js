@@ -5,7 +5,7 @@ class ArduinoNanoUSB {
     this.writer = null;
 
     this.analogValues = {};
-    this.digitalValues = {}; // ✅ ADDED
+    this.digitalValues = {};
     this.connected = false;
   }
 
@@ -13,12 +13,11 @@ class ArduinoNanoUSB {
     return {
       id: 'arduinoNanoUSB',
       name: 'Arduino Nano USB',
-	  
-	color1: "#1381f9",   // block fill
-    color2: "#000000",   // block outline
-	color3: "#0000EE",
-	
-	
+
+      color1: "#1381f9",
+      color2: "#000000",
+      color3: "#0000EE",
+
       blocks: [
         {
           opcode: 'connect',
@@ -44,8 +43,6 @@ class ArduinoNanoUSB {
             VALUE: { type: 'number', defaultValue: 1 }
           }
         },
-
-        // ✅ NEW DIGITAL READ BLOCK
         {
           opcode: 'digitalRead',
           blockType: 'reporter',
@@ -54,7 +51,6 @@ class ArduinoNanoUSB {
             PIN: { type: 'number', defaultValue: 9 }
           }
         },
-
         {
           opcode: 'setPWM',
           blockType: 'command',
@@ -101,13 +97,30 @@ class ArduinoNanoUSB {
   }
 
   async disconnect() {
+    await this.safeDisconnect();
+  }
+
+  async safeDisconnect() {
+    this.connected = false;
+
     try {
-      this.connected = false;
-      if (this.reader) await this.reader.cancel();
-      if (this.writer) this.writer.releaseLock();
-      if (this.port) await this.port.close();
+      if (this.reader) {
+        try { await this.reader.cancel(); } catch {}
+        try { this.reader.releaseLock(); } catch {}
+        this.reader = null;
+      }
+
+      if (this.writer) {
+        try { this.writer.releaseLock(); } catch {}
+        this.writer = null;
+      }
+
+      if (this.port) {
+        try { await this.port.close(); } catch {}
+        this.port = null;
+      }
     } catch (e) {
-      console.error('Disconnect error:', e);
+      console.warn("Safe disconnect error:", e);
     }
   }
 
@@ -119,66 +132,105 @@ class ArduinoNanoUSB {
     const decoder = new TextDecoder();
     let buffer = '';
 
-    while (this.connected) {
-      const { value, done } = await this.reader.read();
-      if (done) break;
+    try {
+      while (this.connected) {
+        const { value, done } = await this.reader.read();
+        if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
 
-      for (let line of lines) {
-        line = line.trim();
+        for (let line of lines) {
+          line = line.trim();
 
-        // ANALOG REPLY: A pin value
-        if (line.startsWith('A')) {
-          const parts = line.split(' ');
-          this.analogValues[Number(parts[1])] = Number(parts[2]);
-        }
+          if (line.startsWith('A')) {
+            const parts = line.split(' ');
+            this.analogValues[Number(parts[1])] = Number(parts[2]);
+          }
 
-        // ✅ DIGITAL REPLY: D pin value
-        if (line.startsWith('D')) {
-          const parts = line.split(' ');
-          this.digitalValues[Number(parts[1])] = Number(parts[2]);
+          if (line.startsWith('D')) {
+            const parts = line.split(' ');
+            this.digitalValues[Number(parts[1])] = Number(parts[2]);
+          }
         }
       }
+    } catch (error) {
+      console.warn("Serial disconnected unexpectedly:", error);
+    } finally {
+      await this.safeDisconnect();
     }
   }
 
   async digitalWrite(args) {
-    if (!this.writer) return;
-    const cmd = `DW ${args.PIN} ${args.VALUE}\n`; // ✅ FIXED COMMAND NAME
-    await this.writer.write(new TextEncoder().encode(cmd));
+    if (!this.connected || !this.writer) return;
+
+    try {
+      const cmd = `DW ${args.PIN} ${args.VALUE}\n`;
+      await this.writer.write(new TextEncoder().encode(cmd));
+    } catch (e) {
+      console.warn("Write failed:", e);
+      await this.safeDisconnect();
+    }
   }
 
-  // ✅ NEW DIGITAL READ FUNCTION
   digitalRead(args) {
-    if (!this.writer) return 0;
+    if (!this.connected || !this.writer) return 0;
+
     const pin = args.PIN;
-    this.writer.write(
-      new TextEncoder().encode(`DR ${pin}\n`)
-    );
+
+    try {
+      this.writer.write(
+        new TextEncoder().encode(`DR ${pin}\n`)
+      );
+    } catch (e) {
+      console.warn("Read request failed:", e);
+      this.safeDisconnect();
+      return 0;
+    }
+
     return this.digitalValues[pin] ?? 0;
   }
 
   async setPWM(args) {
-    if (!this.writer) return;
-    const cmd = `PW ${args.PIN} ${args.VALUE}\n`;
-    await this.writer.write(new TextEncoder().encode(cmd));
+    if (!this.connected || !this.writer) return;
+
+    try {
+      const cmd = `PW ${args.PIN} ${args.VALUE}\n`;
+      await this.writer.write(new TextEncoder().encode(cmd));
+    } catch (e) {
+      console.warn("Write failed:", e);
+      await this.safeDisconnect();
+    }
   }
 
   async setServo(args) {
-    if (!this.writer) return;
-    const cmd = `SW ${args.PIN} ${args.ANGLE}\n`;
-    await this.writer.write(new TextEncoder().encode(cmd));
+    if (!this.connected || !this.writer) return;
+
+    try {
+      const cmd = `SW ${args.PIN} ${args.ANGLE}\n`;
+      await this.writer.write(new TextEncoder().encode(cmd));
+    } catch (e) {
+      console.warn("Write failed:", e);
+      await this.safeDisconnect();
+    }
   }
 
   analogRead(args) {
-    if (!this.writer) return 0;
+    if (!this.connected || !this.writer) return 0;
+
     const pin = args.PIN;
-    this.writer.write(
-      new TextEncoder().encode(`AR ${pin}\n`)
-    );
+
+    try {
+      this.writer.write(
+        new TextEncoder().encode(`AR ${pin}\n`)
+      );
+    } catch (e) {
+      console.warn("Read request failed:", e);
+      this.safeDisconnect();
+      return 0;
+    }
+
     return this.analogValues[pin] ?? 0;
   }
 }
