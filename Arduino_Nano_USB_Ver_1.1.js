@@ -29,9 +29,10 @@ class ArduinoNanoUSB {
           blockType: 'command',
           text: 'disconnect arduino'
         },
+        //fixed Arduino Connected block
         {
           opcode: 'isConnected',
-          blockType: 'boolean',
+          blockType: Scratch.BlockType.BOOLEAN,
           text: 'arduino connected?'
         },
         {
