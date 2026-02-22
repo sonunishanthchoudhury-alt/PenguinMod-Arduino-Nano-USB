@@ -6,6 +6,7 @@ class ArduinoNanoUSB {
 
     this.analogValues = {};
     this.digitalValues = {};
+    this.pulseValue = 0; // ADDED
     this.connected = false;
   }
 
@@ -29,7 +30,6 @@ class ArduinoNanoUSB {
           blockType: 'command',
           text: 'disconnect arduino'
         },
-        //fixed Arduino Connected block
         {
           opcode: 'isConnected',
           blockType: Scratch.BlockType.BOOLEAN,
@@ -76,6 +76,16 @@ class ArduinoNanoUSB {
           text: 'analog read [PIN]',
           arguments: {
             PIN: { type: 'number', defaultValue: 0 }
+          }
+        },
+
+        // NEW BLOCK
+        {
+          opcode: 'readPulseIn',
+          blockType: 'reporter',
+          text: 'read pulse in pin [PIN]',
+          arguments: {
+            PIN: { type: 'number', defaultValue: 8 }
           }
         }
       ]
@@ -153,6 +163,12 @@ class ArduinoNanoUSB {
           if (line.startsWith('D')) {
             const parts = line.split(' ');
             this.digitalValues[Number(parts[1])] = Number(parts[2]);
+          }
+
+          // HANDLE PULSE RESPONSE
+          if (line.startsWith('P')) {
+            const parts = line.split(' ');
+            this.pulseValue = Number(parts[1]);
           }
         }
       }
@@ -233,6 +249,25 @@ class ArduinoNanoUSB {
     }
 
     return this.analogValues[pin] ?? 0;
+  }
+
+  // NEW FUNCTION
+  readPulseIn(args) {
+    if (!this.connected || !this.writer) return 0;
+
+    const pin = args.PIN;
+
+    try {
+      this.writer.write(
+        new TextEncoder().encode(`PI ${pin}\n`)
+      );
+    } catch (e) {
+      console.warn("Pulse request failed:", e);
+      this.safeDisconnect();
+      return 0;
+    }
+
+    return this.pulseValue ?? 0;
   }
 }
 
