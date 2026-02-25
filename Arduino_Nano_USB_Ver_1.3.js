@@ -86,7 +86,7 @@ class ArduinoNanoUSB {
           arguments: {
             PIN: { type: 'number', defaultValue: 8 }
           }
-        }
+        },
 		
 		// NEW BLOCK
 		{
