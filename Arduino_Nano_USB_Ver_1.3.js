@@ -6,7 +6,7 @@ class ArduinoNanoUSB {
 
     this.analogValues = {};
     this.digitalValues = {};
-    this.pulseValue = 0; // ADDED
+    this.pulseValue = 0;
     this.connected = false;
   }
 
@@ -79,7 +79,6 @@ class ArduinoNanoUSB {
           }
         },
 
-        // NEW BLOCK
         {
           opcode: 'readPulseIn',
           blockType: 'reporter',
@@ -88,6 +87,17 @@ class ArduinoNanoUSB {
             PIN: { type: 'number', defaultValue: 8 }
           }
         }
+		
+		// NEW BLOCK
+		{
+		  opcode: 'sendPulse',
+          blockType: 'command',
+          text: 'send pulse on pin [PIN] for [TIME] microseconds',
+          arguments: {
+          PIN: { type: 'number', defaultValue: 9 },
+          TIME: { type: 'number', defaultValue: 1000 }
+  }	
+		} 
       ]
     };
   }
@@ -251,7 +261,6 @@ class ArduinoNanoUSB {
     return this.analogValues[pin] ?? 0;
   }
 
-  // NEW FUNCTION
   readPulseIn(args) {
     if (!this.connected || !this.writer) return 0;
 
@@ -269,6 +278,22 @@ class ArduinoNanoUSB {
 
     return this.pulseValue ?? 0;
   }
+  
+ // NEW FUNCTION
+  async sendPulse(args) {
+  if (!this.connected || !this.writer) return;
+
+  const pin = args.PIN;
+  const time = args.TIME;
+
+  try {
+    const cmd = `SP ${pin} ${time}\n`;
+    await this.writer.write(new TextEncoder().encode(cmd));
+  } catch (e) {
+    console.warn("Pulse send failed:", e);
+    await this.safeDisconnect();
+  }
+}
 }
 
 Scratch.extensions.register(new ArduinoNanoUSB());
