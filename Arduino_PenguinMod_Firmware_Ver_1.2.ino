@@ -52,13 +52,26 @@ void loop() {
       Serial.println(value);
     }
 
-    // NEW PULSEIN COMMAND
     else if (inputString.startsWith("PI")) {
       int pin = inputString.substring(3).toInt();
       pinMode(pin, INPUT);
       unsigned long duration = pulseIn(pin, HIGH, 1000000); // 1 sec timeout
       Serial.print("P ");
       Serial.println(duration);
+    }
+    // NEW PULSE VALUE FEATURE
+    else if (inputString.startsWith("SP")) {
+      int firstSpace = inputString.indexOf(' ');
+      int secondSpace = inputString.indexOf(' ', firstSpace + 1);
+
+      int pin = inputString.substring(firstSpace + 1, secondSpace).toInt();
+      unsigned long duration = inputString.substring(secondSpace + 1).toInt();
+
+      pinMode(pin, OUTPUT);
+
+      digitalWrite(pin, HIGH);
+      delayMicroseconds(duration);
+      digitalWrite(pin, LOW);
     }
   }
 }
