@@ -8,7 +8,10 @@ class ArduinoNanoUSB {
     this.digitalValues = {};
     this.pulseValue = 0;
     this.connected = false;
-  }
+	this.ultraDuration = 0;
+
+}
+  
 
   getInfo() {
     return {
@@ -78,6 +81,17 @@ class ArduinoNanoUSB {
             PIN: { type: 'number', defaultValue: 0 }
           }
         },
+		
+		// NEW BLOCK
+		{
+          opcode: 'ultrasonicDistance',
+          blockType: 'reporter',
+          text: 'ultrasonic distance trig [TRIG] echo [ECHO]',
+          arguments: {
+            TRIG: { type: 'number', defaultValue: 2 },
+            ECHO: { type: 'number', defaultValue: 4 }
+  }
+        },
 
         {
           opcode: 'readPulseIn',
@@ -88,7 +102,6 @@ class ArduinoNanoUSB {
           }
         },
 		
-		// NEW BLOCK
 		{
 		  opcode: 'sendPulse',
           blockType: 'command',
@@ -180,6 +193,11 @@ class ArduinoNanoUSB {
             const parts = line.split(' ');
             this.pulseValue = Number(parts[1]);
           }
+		  
+		  if (line.startsWith('U')) {
+            const parts = line.split(' ');
+            this.ultraDuration = Number(parts[1]);
+}
         }
       }
     } catch (error) {
@@ -260,6 +278,28 @@ class ArduinoNanoUSB {
 
     return this.analogValues[pin] ?? 0;
   }
+  
+  // NEW FUNCTION
+  async ultrasonicDistance(args) {
+  if (!this.connected || !this.writer) return 0;
+
+  const trig = args.TRIG;
+  const echo = args.ECHO;
+
+  try {
+    const cmd = `US ${trig} ${echo}\n`;
+    await this.writer.write(new TextEncoder().encode(cmd));
+  } catch (e) {
+    console.warn("Ultrasonic request failed:", e);
+    await this.safeDisconnect();
+    return 0;
+  }
+
+  // Small wait to allow response
+  await new Promise(resolve => setTimeout(resolve, 30));
+
+  return (this.ultraDuration ?? 0) / 58;
+}
 
   readPulseIn(args) {
     if (!this.connected || !this.writer) return 0;
@@ -279,7 +319,6 @@ class ArduinoNanoUSB {
     return this.pulseValue ?? 0;
   }
   
- // NEW FUNCTION
   async sendPulse(args) {
   if (!this.connected || !this.writer) return;
 
