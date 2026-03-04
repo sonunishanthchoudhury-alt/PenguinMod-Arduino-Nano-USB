@@ -59,7 +59,7 @@ void loop() {
       Serial.print("P ");
       Serial.println(duration);
     }
-    // NEW PULSE VALUE FEATURE
+
     else if (inputString.startsWith("SP")) {
       int firstSpace = inputString.indexOf(' ');
       int secondSpace = inputString.indexOf(' ', firstSpace + 1);
@@ -73,5 +73,30 @@ void loop() {
       delayMicroseconds(duration);
       digitalWrite(pin, LOW);
     }
+
+    else if (inputString.startsWith("US")) {
+
+      int firstSpace = inputString.indexOf(' ');
+      int secondSpace = inputString.indexOf(' ', firstSpace + 1);
+
+      int trigPin = inputString.substring(firstSpace + 1, secondSpace).toInt();
+      int echoPin = inputString.substring(secondSpace + 1).toInt();
+
+      pinMode(trigPin, OUTPUT);
+      pinMode(echoPin, INPUT);
+
+      digitalWrite(trigPin, LOW);
+      delayMicroseconds(2);
+
+      digitalWrite(trigPin, HIGH);
+      delayMicroseconds(10);
+      digitalWrite(trigPin, LOW);
+
+     unsigned long duration = pulseIn(echoPin, HIGH, 30000);
+
+     Serial.print("U ");
+     Serial.println(duration);
+    }
+
   }
 }
