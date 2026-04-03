@@ -1,3 +1,4 @@
+
 #include <Servo.h>
 
 String inputString = "";
@@ -98,11 +99,23 @@ void loop() {
      Serial.println(duration);
     }
 
-    else if (inputString.startsWith("PU")) {
-     int firstSpace = inputString.indexOf(' ');
-     int pin = inputString.substring(firstSpace + 1).toInt();
+    else if (inputString.startsWith("PM")) {
 
-     pinMode(pin, INPUT_PULLUP);
+      int firstSpace = inputString.indexOf(' ');
+      int secondSpace = inputString.indexOf(' ', firstSpace + 1);
+
+      int pin = inputString.substring(firstSpace + 1, secondSpace).toInt();
+      String mode = inputString.substring(secondSpace + 1);
+
+      if (mode == "INPUT") {
+      pinMode(pin, INPUT);
+     }
+     else if (mode == "OUTPUT") {
+     pinMode(pin, OUTPUT);
+     }
+     else if (mode == "INPUT_PULLUP") {
+    pinMode(pin, INPUT_PULLUP);
+    }
     }
 
   }
