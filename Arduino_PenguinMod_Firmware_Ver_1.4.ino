@@ -98,5 +98,12 @@ void loop() {
      Serial.println(duration);
     }
 
+    else if (inputString.startsWith("PU")) {
+     int firstSpace = inputString.indexOf(' ');
+     int pin = inputString.substring(firstSpace + 1).toInt();
+
+     pinMode(pin, INPUT_PULLUP);
+    }
+
   }
 }
