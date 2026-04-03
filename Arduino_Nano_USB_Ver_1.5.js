@@ -1,5 +1,11 @@
 class ArduinoNanoUSB {
   constructor() {
+    // 🚫 Block sandbox mode
+    if (typeof Scratch !== 'undefined' && Scratch.extensions.unsandboxed === false) {
+      console.error("Arduino Nano USB Extension: Cannot run in sandbox mode. Please disable sandbox.");
+      throw new Error("Sandbox mode not supported");
+    }
+
     this.port = null;
     this.reader = null;
     this.writer = null;
@@ -8,10 +14,8 @@ class ArduinoNanoUSB {
     this.digitalValues = {};
     this.pulseValue = 0;
     this.connected = false;
-	this.ultraDuration = 0;
-
-}
-  
+    this.ultraDuration = 0;
+  }
 
   getInfo() {
     return {
@@ -73,15 +77,14 @@ class ArduinoNanoUSB {
             ANGLE: { type: 'number', defaultValue: 90 }
           }
         },
-		// NEW BLOCK
-		{
+        {
           opcode: 'setInputPullup',
           blockType: 'command',
           text: 'set pin [PIN] to INPUT_PULLUP',
           arguments: {
             PIN: { type: 'number', defaultValue: 2 }
-  }
-}
+          }
+        },
         {
           opcode: 'analogRead',
           blockType: 'reporter',
@@ -90,17 +93,15 @@ class ArduinoNanoUSB {
             PIN: { type: 'number', defaultValue: 0 }
           }
         },
-		
-		{
+        {
           opcode: 'ultrasonicDistance',
           blockType: 'reporter',
           text: 'ultrasonic distance trig [TRIG] echo [ECHO]',
           arguments: {
             TRIG: { type: 'number', defaultValue: 2 },
             ECHO: { type: 'number', defaultValue: 4 }
-  }
+          }
         },
-
         {
           opcode: 'readPulseIn',
           blockType: 'reporter',
@@ -109,16 +110,15 @@ class ArduinoNanoUSB {
             PIN: { type: 'number', defaultValue: 8 }
           }
         },
-		
-		{
-		  opcode: 'sendPulse',
+        {
+          opcode: 'sendPulse',
           blockType: 'command',
           text: 'send pulse on pin [PIN] for [TIME] microseconds',
           arguments: {
-          PIN: { type: 'number', defaultValue: 9 },
-          TIME: { type: 'number', defaultValue: 1000 }
-  }	
-		} 
+            PIN: { type: 'number', defaultValue: 9 },
+            TIME: { type: 'number', defaultValue: 1000 }
+          }
+        }
       ]
     };
   }
@@ -200,11 +200,11 @@ class ArduinoNanoUSB {
             const parts = line.split(' ');
             this.pulseValue = Number(parts[1]);
           }
-		  
-		  if (line.startsWith('U')) {
+
+          if (line.startsWith('U')) {
             const parts = line.split(' ');
             this.ultraDuration = Number(parts[1]);
-}
+          }
         }
       }
     } catch (error) {
@@ -267,19 +267,18 @@ class ArduinoNanoUSB {
       await this.safeDisconnect();
     }
   }
-  // NEW FUNCTION
-  
-   async setInputPullup(args) {
-     if (!this.connected || !this.writer) return;
 
-       const pin = args.PIN;
+  async setInputPullup(args) {
+    if (!this.connected || !this.writer) return;
+
+    const pin = args.PIN;
 
     try {
-       const cmd = `PU ${pin}\n`;
-       await this.writer.write(new TextEncoder().encode(cmd));
-     } catch (e) {
-       console.warn("Pullup set failed:", e);
-       await this.safeDisconnect();
+      const cmd = `PU ${pin}\n`;
+      await this.writer.write(new TextEncoder().encode(cmd));
+    } catch (e) {
+      console.warn("Pullup set failed:", e);
+      await this.safeDisconnect();
     }
   }
 
@@ -300,27 +299,26 @@ class ArduinoNanoUSB {
 
     return this.analogValues[pin] ?? 0;
   }
-  
+
   async ultrasonicDistance(args) {
-  if (!this.connected || !this.writer) return 0;
+    if (!this.connected || !this.writer) return 0;
 
-  const trig = args.TRIG;
-  const echo = args.ECHO;
+    const trig = args.TRIG;
+    const echo = args.ECHO;
 
-  try {
-    const cmd = `US ${trig} ${echo}\n`;
-    await this.writer.write(new TextEncoder().encode(cmd));
-  } catch (e) {
-    console.warn("Ultrasonic request failed:", e);
-    await this.safeDisconnect();
-    return 0;
+    try {
+      const cmd = `US ${trig} ${echo}\n`;
+      await this.writer.write(new TextEncoder().encode(cmd));
+    } catch (e) {
+      console.warn("Ultrasonic request failed:", e);
+      await this.safeDisconnect();
+      return 0;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 30));
+
+    return Math.round((this.ultraDuration ?? 0) / 58);
   }
-
-  // Small wait to allow response
-  await new Promise(resolve => setTimeout(resolve, 30));
-
-  return (this.ultraDuration ?? 0) / 58;
-}
 
   readPulseIn(args) {
     if (!this.connected || !this.writer) return 0;
@@ -339,21 +337,21 @@ class ArduinoNanoUSB {
 
     return this.pulseValue ?? 0;
   }
-  
+
   async sendPulse(args) {
-  if (!this.connected || !this.writer) return;
+    if (!this.connected || !this.writer) return;
 
-  const pin = args.PIN;
-  const time = args.TIME;
+    const pin = args.PIN;
+    const time = args.TIME;
 
-  try {
-    const cmd = `SP ${pin} ${time}\n`;
-    await this.writer.write(new TextEncoder().encode(cmd));
-  } catch (e) {
-    console.warn("Pulse send failed:", e);
-    await this.safeDisconnect();
+    try {
+      const cmd = `SP ${pin} ${time}\n`;
+      await this.writer.write(new TextEncoder().encode(cmd));
+    } catch (e) {
+      console.warn("Pulse send failed:", e);
+      await this.safeDisconnect();
+    }
   }
-}
 }
 
 Scratch.extensions.register(new ArduinoNanoUSB());
