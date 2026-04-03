@@ -73,6 +73,15 @@ class ArduinoNanoUSB {
             ANGLE: { type: 'number', defaultValue: 90 }
           }
         },
+		// NEW BLOCK
+		{
+          opcode: 'setInputPullup',
+          blockType: 'command',
+          text: 'set pin [PIN] to INPUT_PULLUP',
+          arguments: {
+            PIN: { type: 'number', defaultValue: 2 }
+  }
+}
         {
           opcode: 'analogRead',
           blockType: 'reporter',
@@ -82,7 +91,6 @@ class ArduinoNanoUSB {
           }
         },
 		
-		// NEW BLOCK
 		{
           opcode: 'ultrasonicDistance',
           blockType: 'reporter',
@@ -188,7 +196,6 @@ class ArduinoNanoUSB {
             this.digitalValues[Number(parts[1])] = Number(parts[2]);
           }
 
-          // HANDLE PULSE RESPONSE
           if (line.startsWith('P')) {
             const parts = line.split(' ');
             this.pulseValue = Number(parts[1]);
@@ -260,6 +267,21 @@ class ArduinoNanoUSB {
       await this.safeDisconnect();
     }
   }
+  // NEW FUNCTION
+  
+   async setInputPullup(args) {
+     if (!this.connected || !this.writer) return;
+
+       const pin = args.PIN;
+
+    try {
+       const cmd = `PU ${pin}\n`;
+       await this.writer.write(new TextEncoder().encode(cmd));
+     } catch (e) {
+       console.warn("Pullup set failed:", e);
+       await this.safeDisconnect();
+    }
+  }
 
   analogRead(args) {
     if (!this.connected || !this.writer) return 0;
@@ -279,7 +301,6 @@ class ArduinoNanoUSB {
     return this.analogValues[pin] ?? 0;
   }
   
-  // NEW FUNCTION
   async ultrasonicDistance(args) {
   if (!this.connected || !this.writer) return 0;
 
