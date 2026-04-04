@@ -120,18 +120,146 @@ class ArduinoNanoUSB {
     };
   }
 
-  async setPinMode(args) {
-    if (!this.connected || !this.writer) return;
+  async connect() {
+    try {
+      this.port = await navigator.serial.requestPort();
+      await this.port.open({ baudRate: 115200 });
+
+      this.writer = this.port.writable.getWriter();
+      this.reader = this.port.readable.getReader();
+
+      this.connected = true;
+      this.readLoop();
+    } catch (e) {
+      console.error('Connection failed:', e);
+    }
+  }
+
+  async disconnect() {
+    await this.safeDisconnect();
+  }
+
+  async safeDisconnect() {
+    this.connected = false;
 
     try {
-      const cmd = `PM ${args.PIN} ${args.MODE}\n`;
-      await this.writer.write(new TextEncoder().encode(cmd));
+      if (this.reader) {
+        try { await this.reader.cancel(); } catch {}
+        try { this.reader.releaseLock(); } catch {}
+        this.reader = null;
+      }
+
+      if (this.writer) {
+        try { this.writer.releaseLock(); } catch {}
+        this.writer = null;
+      }
+
+      if (this.port) {
+        try { await this.port.close(); } catch {}
+        this.port = null;
+      }
     } catch (e) {
-      console.warn("Pin mode failed:", e);
+      console.warn("Safe disconnect error:", e);
+    }
+  }
+
+  isConnected() {
+    return this.connected;
+  }
+
+  async readLoop() {
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (this.connected) {
+        const { value, done } = await this.reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (let line of lines) {
+          line = line.trim();
+
+          if (line.startsWith('A')) {
+            const parts = line.split(' ');
+            this.analogValues[Number(parts[1])] = Number(parts[2]);
+          }
+
+          if (line.startsWith('D')) {
+            const parts = line.split(' ');
+            this.digitalValues[Number(parts[1])] = Number(parts[2]);
+          }
+
+          if (line.startsWith('P')) {
+            const parts = line.split(' ');
+            this.pulseValue = Number(parts[1]);
+          }
+
+          if (line.startsWith('U')) {
+            const parts = line.split(' ');
+            this.ultraDuration = Number(parts[1]);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("Serial disconnected unexpectedly:", error);
+    } finally {
       await this.safeDisconnect();
     }
   }
 
-  // (ALL YOUR OTHER FUNCTIONS REMAIN EXACTLY SAME — unchanged)
+  async digitalWrite(args) {
+    if (!this.connected || !this.writer) return;
+    await this.writer.write(new TextEncoder().encode(`DW ${args.PIN} ${args.VALUE}\n`));
+  }
+
+  digitalRead(args) {
+    if (!this.connected || !this.writer) return 0;
+    this.writer.write(new TextEncoder().encode(`DR ${args.PIN}\n`));
+    return this.digitalValues[args.PIN] ?? 0;
+  }
+
+  async setPWM(args) {
+    if (!this.connected || !this.writer) return;
+    await this.writer.write(new TextEncoder().encode(`PW ${args.PIN} ${args.VALUE}\n`));
+  }
+
+  async setServo(args) {
+    if (!this.connected || !this.writer) return;
+    await this.writer.write(new TextEncoder().encode(`SW ${args.PIN} ${args.ANGLE}\n`));
+  }
+
+  async setPinMode(args) {
+    if (!this.connected || !this.writer) return;
+    await this.writer.write(new TextEncoder().encode(`PM ${args.PIN} ${args.MODE}\n`));
+  }
+
+  analogRead(args) {
+    if (!this.connected || !this.writer) return 0;
+    this.writer.write(new TextEncoder().encode(`AR ${args.PIN}\n`));
+    return this.analogValues[args.PIN] ?? 0;
+  }
+
+  async ultrasonicDistance(args) {
+    if (!this.connected || !this.writer) return 0;
+    await this.writer.write(new TextEncoder().encode(`US ${args.TRIG} ${args.ECHO}\n`));
+    await new Promise(r => setTimeout(r, 30));
+    return Math.round((this.ultraDuration ?? 0) / 58);
+  }
+
+  readPulseIn(args) {
+    if (!this.connected || !this.writer) return 0;
+    this.writer.write(new TextEncoder().encode(`PI ${args.PIN}\n`));
+    return this.pulseValue ?? 0;
+  }
+
+  async sendPulse(args) {
+    if (!this.connected || !this.writer) return;
+    await this.writer.write(new TextEncoder().encode(`SP ${args.PIN} ${args.TIME}\n`));
+  }
 }
+
 Scratch.extensions.register(new ArduinoNanoUSB());
