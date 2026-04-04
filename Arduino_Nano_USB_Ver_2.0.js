@@ -121,19 +121,33 @@ class ArduinoNanoUSB {
   }
 
   async connect() {
-    try {
-      this.port = await navigator.serial.requestPort();
-      await this.port.open({ baudRate: 115200 });
+  try {
+    this.port = await navigator.serial.requestPort();
+    await this.port.open({ baudRate: 115200 });
 
-      this.writer = this.port.writable.getWriter();
-      this.reader = this.port.readable.getReader();
+    this.writer = this.port.writable.getWriter();
+    this.reader = this.port.readable.getReader();
 
-      this.connected = true;
-      this.readLoop();
-    } catch (e) {
-      console.error('Connection failed:', e);
+    this.connected = true;
+
+    // 🔥 Wait for Arduino reset
+    await new Promise(r => setTimeout(r, 1500));
+
+    // 🔥 Send ST MULTIPLE TIMES (guaranteed delivery)
+    const encoder = new TextEncoder();
+
+    for (let i = 0; i < 3; i++) {
+      await this.writer.write(encoder.encode("ST\n"));
+      await new Promise(r => setTimeout(r, 200));
     }
+
+    // Start reading AFTER sending ST
+    this.readLoop();
+
+  } catch (e) {
+    console.error('Connection failed:', e);
   }
+}
 
   async disconnect() {
     await this.safeDisconnect();
