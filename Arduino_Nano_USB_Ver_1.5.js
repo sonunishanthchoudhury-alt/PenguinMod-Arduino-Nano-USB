@@ -214,34 +214,34 @@ class ArduinoNanoUSB {
   async digitalWrite(args) {
     if (!this.connected || !this.writer) return;
     await this.writer.write(new TextEncoder().encode(`DW ${args.PIN} ${args.VALUE}\n`));
+	await new Promise(r => setTimeout(r, 10));
   }
 
   digitalRead(args) {
-    if (!this.connected || !this.writer) return 0;
-    this.writer.write(new TextEncoder().encode(`DR ${args.PIN}\n`));
-    return this.digitalValues[args.PIN] ?? 0;
-  }
+  return this.digitalValues[args.PIN] ?? 0;
+}
 
   async setPWM(args) {
     if (!this.connected || !this.writer) return;
     await this.writer.write(new TextEncoder().encode(`PW ${args.PIN} ${args.VALUE}\n`));
+	await new Promise(r => setTimeout(r, 10));
   }
 
   async setServo(args) {
     if (!this.connected || !this.writer) return;
     await this.writer.write(new TextEncoder().encode(`SW ${args.PIN} ${args.ANGLE}\n`));
+	await new Promise(r => setTimeout(r, 10));
   }
 
   async setPinMode(args) {
     if (!this.connected || !this.writer) return;
     await this.writer.write(new TextEncoder().encode(`PM ${args.PIN} ${args.MODE}\n`));
+	await new Promise(r => setTimeout(r, 10));
   }
 
-  analogRead(args) {
-    if (!this.connected || !this.writer) return 0;
-    this.writer.write(new TextEncoder().encode(`AR ${args.PIN}\n`));
-    return this.analogValues[args.PIN] ?? 0;
-  }
+ analogRead(args) {
+  return this.analogValues[args.PIN] ?? 0;
+}
 
   async ultrasonicDistance(args) {
     if (!this.connected || !this.writer) return 0;
@@ -250,15 +250,17 @@ class ArduinoNanoUSB {
     return Math.round((this.ultraDuration ?? 0) / 58);
   }
 
-  readPulseIn(args) {
+ async readPulseIn(args) {
     if (!this.connected || !this.writer) return 0;
-    this.writer.write(new TextEncoder().encode(`PI ${args.PIN}\n`));
+   await this.writer.write(new TextEncoder().encode(`PI ${args.PIN}\n`));
+	await new Promise(r => setTimeout(r, 10));
     return this.pulseValue ?? 0;
   }
 
   async sendPulse(args) {
     if (!this.connected || !this.writer) return;
     await this.writer.write(new TextEncoder().encode(`SP ${args.PIN} ${args.TIME}\n`));
+	await new Promise(r => setTimeout(r, 10));
   }
 }
 
