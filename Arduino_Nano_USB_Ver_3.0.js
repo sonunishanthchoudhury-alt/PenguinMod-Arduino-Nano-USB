@@ -28,7 +28,7 @@
                 blocks: [
                     // ---- CONNECTION ----
                     { opcode: 'connectUSB', blockType: Scratch.BlockType.COMMAND, text: 'connect Arduino through USB' },
-                    { opcode: 'connectBluetooth', blockType: Scratch.BlockType.COMMAND, text: 'connect Arduino through Bluetooth (Advanced setup required)' },
+                    { opcode: 'connectBluetooth', blockType: Scratch.BlockType.COMMAND, text: 'connect Arduino through Bluetooth (If on Mac with HC-05)' },
 
                     // ---- PIN MODE ----
                     {
